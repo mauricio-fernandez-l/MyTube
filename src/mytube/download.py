@@ -40,7 +40,7 @@ class YouTubeDownloader:
         for handler in self.logger.handlers:
             handler.setFormatter(formatter)
 
-    def download(self, url: str, output_dir: str = "videos"):
+    def download(self, url: str, output_dir: str = "videos", filename: str = None):
         """Download video with one of the clients from the CLIENTS list."""
         for i, client in enumerate(self.CLIENTS):
             try:
@@ -53,13 +53,17 @@ class YouTubeDownloader:
                 # Download filetype (video or audio)
                 if output_dir:
                     os.makedirs(output_dir, exist_ok=True)
-                ys.download(output_path=output_dir if output_dir else os.getcwd())
+                ys.download(output_path=output_dir if output_dir else os.getcwd(), filename=filename)
                 if self.log:
                     self.logger.info(f"Client {client}: Success downloading.")
                 df = pd.DataFrame(
                     columns=["Start_min", "Start_sec", "End_min", "End_sec", "Name"]
                 )
-                df.to_csv(f"{output_dir}/{yt.title}.csv", index=False)
+                if filename:
+                    csv_name = filename.replace(".mp4", ".csv")
+                else:
+                    csv_name = yt.title.replace(".mp4", ".csv")
+                df.to_csv(f"{output_dir}/{csv_name}", index=False)
                 if self.log:
                     self.logger.info(f"Created .csv file")
                 # Return from function if success

@@ -5,6 +5,7 @@ import os
 import csv
 import datetime
 import cv2
+import shutil
 
 from .logger import get_logger
 
@@ -16,10 +17,12 @@ now = datetime.datetime.now
 class ThumbnailGenerator:
 
     @staticmethod
-    def run(video_path: str, thumbnail_name: str, time: int = 10):
+    def run(video_path: str, thumbnail_name: str = None, time: int = 10):
         output_dir = os.path.join(os.path.dirname(video_path), "thumbnails")
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+        if thumbnail_name is None:
+            thumbnail_name = os.path.basename(video_path).replace(".mp4", ".png")
         thumbnail_path = os.path.join(output_dir, thumbnail_name)
         cap = cv2.VideoCapture(video_path)
         cap.set(cv2.CAP_PROP_POS_MSEC, time * 1000)
@@ -99,6 +102,13 @@ class VideosProcessor:
             vc = VideoCutter(video_path)
             vc.run()
         self.logger.info("All videos processed")
+
+    def simple_pass(self, video_name: str):
+        path = os.path.join(self.videos_dir, video_name)
+        shutil.copy(path, os.path.join(self.videos_dir, "processed"))
+        path_processed = os.path.join(self.videos_dir, "processed", video_name)
+        ThumbnailGenerator.run(path_processed)
+
 
 
 # %%
