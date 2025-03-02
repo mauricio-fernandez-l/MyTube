@@ -1,0 +1,17 @@
+[project]
+name = "mytube"
+version = "2025.3.2"
+description = "Simple package for downloading, editing and displaying YouTube videos."
+authors = [
+    { name = "Mauricio Fernández", email = "mauricio.fernandez.lb@gmail.com" }
+]
+dependencies = [
+    "pytubefix",
+    "moviepy",
+    "opencv-python",
+    "gradio"
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"

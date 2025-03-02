@@ -1,0 +1,6 @@
+videos
+dev*
+__pycache__
+*egg-info
+launch.py 
+launch.bat
