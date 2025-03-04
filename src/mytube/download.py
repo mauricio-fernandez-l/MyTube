@@ -53,7 +53,10 @@ class YouTubeDownloader:
                 # Download filetype (video or audio)
                 if output_dir:
                     os.makedirs(output_dir, exist_ok=True)
-                ys.download(output_path=output_dir if output_dir else os.getcwd(), filename=filename)
+                ys.download(
+                    output_path=output_dir if output_dir else os.getcwd(),
+                    filename=filename,
+                )
                 if self.log:
                     self.logger.info(f"Client {client}: Success downloading.")
                 df = pd.DataFrame(

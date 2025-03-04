@@ -14,14 +14,14 @@ class WebApp:
     def __init__(
         self,
         title: str = "MyTube",
-        organizer: str = None,
+        information: str = None,
         processed_videos_folder: str = "videos/processed",
         n_max_videos: int = 4,
-        only_one_more_path = "videos/info/one_more.mp4",
-        finished_path = "videos/info/finished.mp4",
+        only_one_more_path="videos/info/one_more.mp4",
+        finished_path="videos/info/finished.mp4",
     ):
         self.title = title
-        self.organizer = organizer
+        self.information = information
         self.processed_videos_folder = processed_videos_folder
         self.n_max_videos = n_max_videos
         self.only_one_more_path = only_one_more_path
@@ -113,8 +113,8 @@ class WebApp:
             st_seen_videos = gr.State(value=[])
             # Layout
             gr.Markdown(f"## {self.title}")
-            if self.organizer:
-                gr.Markdown(f"Organized by {self.organizer}")
+            if self.information:
+                gr.Markdown(self.information)
             with gr.Row():
                 with gr.Column(scale=4):
                     with gr.Tabs() as tabs:

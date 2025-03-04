@@ -110,5 +110,4 @@ class VideosProcessor:
         ThumbnailGenerator.run(path_processed)
 
 
-
 # %%
