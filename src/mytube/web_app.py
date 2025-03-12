@@ -4,6 +4,7 @@ import gradio as gr
 import glob
 import os
 import datetime
+import matplotlib.pyplot as plt
 
 now = datetime.datetime.now
 
@@ -62,7 +63,8 @@ class WebApp:
             counter = n_max_videos
             video_update = gr.update(value=None, visible=False, autoplay=False)
             tabs_update = gr.update(selected=0)
-        return counter, video_update, tabs_update, seen_videos
+        progress_plot = self.gen_progress_plot(n_max_videos, counter)
+        return counter, video_update, tabs_update, seen_videos, progress_plot
 
     def compute_time_passed_f(self, start_time: datetime.datetime):
         dt = now() - start_time
@@ -103,6 +105,33 @@ class WebApp:
     def end_info_video(self):
         return gr.update(selected=2)
 
+    @staticmethod
+    def gen_progress_plot(n_total: int, n_done: int):
+        # Define colors for "done" and "undone" sections
+        done_color = "#fca903"
+        undone_color = "#03fcdf"
+        colors = [done_color] * n_done + [undone_color] * (n_total - n_done)
+
+        # Define values and labels
+        values = [1] * n_total  # Equal slices
+        labels = [""] * n_total  # No labels
+
+        # Create the pie chart
+        fig, ax = plt.subplots()
+        wedges, texts = ax.pie(
+            values,
+            colors=colors,
+            labels=labels,
+            wedgeprops=dict(edgecolor="black")  # Black borders for visibility
+        )
+        
+        return fig
+
+    def update_max_videos(self, n_max_videos: int, counter: int):
+        progress_plot = self.gen_progress_plot(n_max_videos, counter)
+        return n_max_videos, n_max_videos, progress_plot
+
+
     def launch(self):
         css = """
         .info textarea {font-size: 2em; !important}
@@ -138,6 +167,10 @@ class WebApp:
                     display_counter = gr.Textbox(
                         st_counter.value, label="Counter", elem_classes="info"
                     )
+                    display_max = gr.Textbox(
+                        st_n_max_videos.value, label="Max Videos", interactive=False
+                    )
+                    progress_plot = gr.Plot(value=self.gen_progress_plot(st_n_max_videos.value, 0))
             with gr.Accordion(label="Parental control", open=False):
                 display_start = gr.Textbox(
                     st_start.value.strftime("%Y-%m-%d %H:%M"), label="Start Time"
@@ -163,15 +196,17 @@ class WebApp:
                 inputs=[video, st_counter, st_n_max_videos],
                 outputs=[video, tabs, info_video],
             )
+
             info_video.end(
                 fn=self.end_info_video,
                 inputs=None,
                 outputs=[tabs],
             )
+            
             thumbnail_gallery.select(
                 fn=self.select_thumbnail,
                 inputs=[st_counter, st_n_max_videos, st_seen_videos],
-                outputs=[st_counter, video, tabs, st_seen_videos],
+                outputs=[st_counter, video, tabs, st_seen_videos, progress_plot],
             ).then(
                 fn=lambda x: x,
                 inputs=st_counter,
@@ -191,15 +226,17 @@ class WebApp:
                 inputs=None,
                 outputs=thumbnail_gallery,
             )
+
             compute_time_passed.click(
                 fn=self.compute_time_passed_f,
                 inputs=st_start,
                 outputs=display_time_passed,
             )
+
             parental_max_videos.select(
-                fn=lambda x: x,
-                inputs=parental_max_videos,
-                outputs=st_n_max_videos,
+                fn=self.update_max_videos,
+                inputs=[parental_max_videos, st_counter],
+                outputs=[st_n_max_videos, display_max, progress_plot],
             )
 
         demo.launch(inbrowser=True)
