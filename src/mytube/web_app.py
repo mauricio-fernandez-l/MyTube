@@ -74,7 +74,7 @@ class WebApp:
     def end_video(self, video: str, counter: int, n_max_videos: int):
         video = gr.update(value=None, visible=False, autoplay=False)
         if counter < n_max_videos - 1:
-            tab_update = gr.update(selected=1)
+            tab_update = gr.update(selected=2)
             info_update = None
         elif counter == n_max_videos - 1:
             tab_update = gr.update(selected=0)
@@ -99,10 +99,13 @@ class WebApp:
             else:
                 info_update = None
         return video, tab_update, info_update
+    
+    def end_info_video(self):
+        return gr.update(selected=2)
 
     def launch(self):
         css = """
-        .info textarea {font-size: 3em; !important}
+        .info textarea {font-size: 2em; !important}
         """
 
         with gr.Blocks(css=css) as demo:
@@ -118,6 +121,13 @@ class WebApp:
             with gr.Row():
                 with gr.Column(scale=4):
                     with gr.Tabs() as tabs:
+                        with gr.Tab(label="Collection", id=2):
+                            thumbnail_gallery = gr.Gallery(
+                                self.thumbnails,
+                                label="Thumbnails",
+                                allow_preview=False,
+                                columns=5,
+                            )
                         with gr.Tab(label="Video", id=1):
                             video = gr.Video(
                                 value=None, scale=3, autoplay=True, visible=False
@@ -128,22 +138,16 @@ class WebApp:
                     display_counter = gr.Textbox(
                         st_counter.value, label="Counter", elem_classes="info"
                     )
-                    thumbnail_gallery = gr.Gallery(
-                        self.thumbnails,
-                        label="Thumbnails",
-                        allow_preview=False,
-                        columns=2,
-                    )
-            display_start = gr.Textbox(
-                st_start.value.strftime("%Y-%m-%d %H:%M"), label="Start Time"
-            )
-            display_seen_videos = gr.Gallery(
-                None,
-                label="Seen videos",
-                interactive=False,
-                columns=st_n_max_videos.value,
-            )
             with gr.Accordion(label="Parental control", open=False):
+                display_start = gr.Textbox(
+                    st_start.value.strftime("%Y-%m-%d %H:%M"), label="Start Time"
+                )
+                display_seen_videos = gr.Gallery(
+                    None,
+                    label="Seen videos",
+                    interactive=False,
+                    columns=st_n_max_videos.value,
+                )
                 with gr.Row():
                     compute_time_passed = gr.Button(value="Compute time passed")
                     display_time_passed = gr.Textbox(
@@ -158,6 +162,11 @@ class WebApp:
                 fn=self.end_video,
                 inputs=[video, st_counter, st_n_max_videos],
                 outputs=[video, tabs, info_video],
+            )
+            info_video.end(
+                fn=self.end_info_video,
+                inputs=None,
+                outputs=[tabs],
             )
             thumbnail_gallery.select(
                 fn=self.select_thumbnail,
