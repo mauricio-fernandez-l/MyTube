@@ -20,6 +20,8 @@ class WebApp:
         n_max_videos: int = 4,
         only_one_more_path="videos/info/one_more.mp4",
         finished_path="videos/info/finished.mp4",
+        color_done="#fca903",
+        color_undone="#03fcdf",
     ):
         self.title = title
         self.information = information
@@ -30,6 +32,8 @@ class WebApp:
         self.video_files = glob.glob(f"{self.processed_videos_folder}/*.mp4")
         self.thumbnail_folder = os.path.join(self.processed_videos_folder, "thumbnails")
         self.thumbnails = self._get_thumbnails()
+        self.color_done = color_done
+        self.color_undone = color_undone
 
     def _get_thumbnails(self):
         thumbnails = []
@@ -105,11 +109,10 @@ class WebApp:
     def end_info_video(self):
         return gr.update(selected=2)
 
-    @staticmethod
-    def gen_progress_plot(n_total: int, n_done: int):
+    def gen_progress_plot(self, n_total: int, n_done: int):
         # Define colors for "done" and "undone" sections
-        done_color = "#fca903"
-        undone_color = "#03fcdf"
+        done_color = self.color_done
+        undone_color = self.color_undone
         colors = [done_color] * n_done + [undone_color] * (n_total - n_done)
 
         # Define values and labels
@@ -134,8 +137,9 @@ class WebApp:
 
     def launch(self):
         css = """
-        .info textarea {font-size: 2em; !important}
-        """
+        .info textarea {font-size: 2em; !important; color: %s;}
+        .info2 textarea {font-size: 2em; color: %s;}
+        """ % (self.color_done, self.color_undone)
 
         with gr.Blocks(css=css) as demo:
             # State
@@ -168,7 +172,7 @@ class WebApp:
                         st_counter.value, label="Counter", elem_classes="info"
                     )
                     display_max = gr.Textbox(
-                        st_n_max_videos.value, label="Max Videos", interactive=False
+                        st_n_max_videos.value, label="Max Videos", interactive=False, elem_classes="info2"
                     )
                     progress_plot = gr.Plot(value=self.gen_progress_plot(st_n_max_videos.value, 0))
             with gr.Accordion(label="Parental control", open=False):
