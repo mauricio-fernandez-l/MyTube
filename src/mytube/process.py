@@ -18,6 +18,8 @@ class ThumbnailGenerator:
 
     @staticmethod
     def run(video_path: str, thumbnail_name: str = None, time: int = 10):
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"Video file {video_path} not found")
         output_dir = os.path.join(os.path.dirname(video_path), "thumbnails")
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -40,6 +42,8 @@ class ThumbnailGenerator:
 
 class VideoCutter:
     def __init__(self, video_path: str):
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"Video file {video_path} not found")
         self.video_path = video_path
         self.output_dir = os.path.join(os.path.dirname(video_path), "processed")
         if not os.path.exists(self.output_dir):
@@ -105,6 +109,8 @@ class VideosProcessor:
 
     def simple_pass(self, video_name: str):
         path = os.path.join(self.videos_dir, video_name)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Video file {path} not found")
         shutil.copy(path, os.path.join(self.videos_dir, "processed"))
         path_processed = os.path.join(self.videos_dir, "processed", video_name)
         ThumbnailGenerator.run(path_processed)
