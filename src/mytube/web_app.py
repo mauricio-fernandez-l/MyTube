@@ -243,4 +243,4 @@ class WebApp:
                 outputs=[st_n_max_videos, display_max, progress_plot],
             )
 
-        demo.launch(inbrowser=True)
+        demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=7860)
