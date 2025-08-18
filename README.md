@@ -36,7 +36,12 @@ Launch web app.
 ```python
 from mytube.web_app import WebApp 
 
-w = WebApp()
+w = WebApp(
+    title="YourTube",
+    information="By You",
+    only_one_more_path="videos/info/one_more.mp4",
+    finished_path="videos/info/finished.mp4",
+)
 w.launch()
 ```
 
