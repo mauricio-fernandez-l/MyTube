@@ -2,7 +2,7 @@
 
 ## Description
 
-Minimal package for downloading, processing (cuttin and generating thumbnails) and offering a web app for local **offline** video watching, e.g., for your kids or grand mother.
+Minimal package for downloading, processing (cutting videos and generating thumbnails) and offering a web app for local **offline** video watching, e.g., for your kids or grand mother.
 
 ## Installation 
 
@@ -70,3 +70,7 @@ w.launch()
 2. Create `C:\this\repo\root\launch.py` with content as in the web app example above.
 3. Create desktop shortcut to `launch.bat`.
 
+See also files in `demo_files`
+
+* [launch.py](./docs/demo_files/launch.py)
+* [launch.bat](./docs/demo_files/launch.bat)

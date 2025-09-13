@@ -1,0 +1,32 @@
+site_name: MyTube Docs
+
+# Theme with built-in copy buttons and better code styling
+theme:
+  name: material
+  features:
+    - content.code.copy       # adds a copy-to-clipboard button on code blocks
+    - content.code.select     # click in gutter to select entire block
+    - content.code.annotate   # support for code annotations (optional)
+
+# Recommended extensions for rich code formatting with Material
+markdown_extensions:
+  - admonition
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences      # improved fenced code blocks
+  - pymdownx.inlinehilite     # inline `==code==` highlighting
+  - pymdownx.snippets         # include file/code snippets if needed
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+
+# Plugins
+plugins:
+  - search
+  - include-markdown:
+      rewrite_relative_urls: true   # fix relative links when including README into docs
+      comments: false
