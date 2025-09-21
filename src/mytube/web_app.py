@@ -175,15 +175,15 @@ class WebApp:
                         st_n_max_videos.value, label="Max Videos", interactive=False, elem_classes="info2"
                     )
                     progress_plot = gr.Plot(value=self.gen_progress_plot(st_n_max_videos.value, 0))
+            display_seen_videos = gr.Gallery(
+                None,
+                label="Seen videos",
+                interactive=False,
+                columns=st_n_max_videos.value,
+            )
             with gr.Accordion(label="Parental control", open=False):
                 display_start = gr.Textbox(
                     st_start.value.strftime("%Y-%m-%d %H:%M"), label="Start Time"
-                )
-                display_seen_videos = gr.Gallery(
-                    None,
-                    label="Seen videos",
-                    interactive=False,
-                    columns=st_n_max_videos.value,
                 )
                 with gr.Row():
                     compute_time_passed = gr.Button(value="Compute time passed")
@@ -199,12 +199,28 @@ class WebApp:
                 fn=self.end_video,
                 inputs=[video, st_counter, st_n_max_videos],
                 outputs=[video, tabs, info_video],
+            ).then(
+                fn=lambda: gr.update(value=[]),
+                inputs=None,
+                outputs=thumbnail_gallery,
+            ).then(
+                fn=lambda: gr.update(value=self.thumbnails),
+                inputs=None,
+                outputs=thumbnail_gallery,
             )
 
             info_video.end(
                 fn=self.end_info_video,
                 inputs=None,
                 outputs=[tabs],
+            ).then(
+                fn=lambda: gr.update(value=[]),
+                inputs=None,
+                outputs=thumbnail_gallery,
+            ).then(
+                fn=lambda: gr.update(value=self.thumbnails),
+                inputs=None,
+                outputs=thumbnail_gallery,
             )
             
             thumbnail_gallery.select(
@@ -221,14 +237,6 @@ class WebApp:
                 ),
                 inputs=st_seen_videos,
                 outputs=display_seen_videos,
-            ).then(
-                fn=lambda: None,
-                inputs=None,
-                outputs=thumbnail_gallery,
-            ).then(
-                fn=lambda: self.thumbnails,
-                inputs=None,
-                outputs=thumbnail_gallery,
             )
 
             compute_time_passed.click(

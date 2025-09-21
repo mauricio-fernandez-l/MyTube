@@ -1,6 +1,6 @@
 [project]
 name = "mytube"
-version = "2025.3.12"
+version = "2025.9.21"
 description = "Simple package for downloading, editing and displaying YouTube videos."
 authors = [
     { name = "Mauricio Fernández", email = "mauricio.fernandez.lb@gmail.com" }
