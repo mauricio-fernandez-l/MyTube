@@ -6,6 +6,14 @@ Minimal package for downloading, processing (cutting videos and generating thumb
 
 ## Installation 
 
+Create a local python environment
+
+```shell 
+python -m venv .venv
+```
+
+and install `mytube` package in it
+
 ```shell
 pip install .
 ``` 
@@ -47,30 +55,21 @@ w.launch()
 
 ## Create desktop shortcut
 
-1. Create `launch.bat` with content
+1. Create `C:\this\repo\root\launch.py` with content as in the web app example above.
+2. Run the script `create_shortcut.py`
 
-    ```bat
-    @echo off
-    echo ============================
-    echo 1/3: Activate environment
-    echo ============================
-    call conda activate your_env_with_mytube_installed
-
-    echo ============================
-    echo 2/3: Switch to the directory
-    echo ============================
-    cd /d C:\this\repo\root
-
-    echo ============================
-    echo 3/3: Launch app
-    echo ============================
-    python launch.py
+    ```shell
+    python create_shortcut.py
     ```
 
-2. Create `C:\this\repo\root\launch.py` with content as in the web app example above.
-3. Create desktop shortcut to `launch.bat`.
+    with adapted configuration
+
+    ```python
+    # Configuration
+    PNG_PATH = "images/my_image.png"  # Change this to your PNG file path
+    SHORTCUT_NAME = "MyTube"  # Change this to your desired shortcut name
+    ```
 
 See also files in `demo_files`
 
 * [launch.py](./docs/demo_files/launch.py)
-* [launch.bat](./docs/demo_files/launch.bat)

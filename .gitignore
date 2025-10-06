@@ -6,3 +6,5 @@ launch.py
 launch.bat
 build*
 site
+.venv*
+images
