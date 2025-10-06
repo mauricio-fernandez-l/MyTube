@@ -12,11 +12,6 @@ import logging
 
 class YouTubeDownloader:
     CLIENTS = [
-        "WEB",
-        "WEB_EMBED",
-        "WEB_MUSIC",
-        "WEB_CREATOR",
-        "WEB_SAFARI",
         "ANDROID",
         "ANDROID_MUSIC",
         "ANDROID_CREATOR",
@@ -29,6 +24,11 @@ class YouTubeDownloader:
         "MWEB",
         "TV_EMBED",
         "MEDIA_CONNECT",
+        "WEB",
+        "WEB_EMBED",
+        "WEB_MUSIC",
+        "WEB_CREATOR",
+        "WEB_SAFARI",
     ]
 
     def __init__(self, log: bool = False):
