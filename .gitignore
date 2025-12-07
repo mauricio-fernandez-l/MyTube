@@ -8,3 +8,4 @@ build*
 site
 .venv*
 images
+webapp_state.json

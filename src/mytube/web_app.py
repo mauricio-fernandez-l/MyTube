@@ -4,6 +4,7 @@ import gradio as gr
 import glob
 import os
 import datetime
+import json
 import matplotlib.pyplot as plt
 
 now = datetime.datetime.now
@@ -29,11 +30,15 @@ class WebApp:
         self.n_max_videos = n_max_videos
         self.only_one_more_path = only_one_more_path
         self.finished_path = finished_path
-        self.video_files = glob.glob(f"{self.processed_videos_folder}/*.mp4")
+        self.video_files = sorted(glob.glob(f"{self.processed_videos_folder}/*.mp4"))
         self.thumbnail_folder = os.path.join(self.processed_videos_folder, "thumbnails")
         self.thumbnails = self._get_thumbnails()
         self.color_done = color_done
         self.color_undone = color_undone
+        self.state_file = os.path.abspath("webapp_state.json")
+        print(f"WebApp state file: {self.state_file}")
+        self._write_state(self._default_state())
+        self.state = self._load_state()
 
     def _get_thumbnails(self):
         thumbnails = []
@@ -46,6 +51,122 @@ class WebApp:
                 self.video_files.remove(video)
         return thumbnails
 
+    def _default_state(self):
+        return {
+            "counter": 0,
+            "seen_videos": [],
+            "n_max_videos": self.n_max_videos,
+        }
+
+    def _load_state(self):
+        if not os.path.exists(self.state_file):
+            state = self._default_state()
+            self._write_state(state)
+            return state
+        try:
+            with open(self.state_file, "r", encoding="utf-8") as f:
+                state = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            state = self._default_state()
+        stored_limit = state.get("n_max_videos", self.n_max_videos)
+        try:
+            stored_limit = int(stored_limit)
+        except (TypeError, ValueError):
+            stored_limit = self.n_max_videos
+        if stored_limit > 0:
+            self.n_max_videos = stored_limit
+        counter = int(state.get("counter", 0))
+        counter = max(0, min(counter, self.n_max_videos))
+        raw_seen = state.get("seen_videos", [])
+        seen_videos = []
+        for candidate in raw_seen:
+            try:
+                idx = int(candidate)
+            except (TypeError, ValueError):
+                continue
+            if 0 <= idx < len(self.thumbnails) and idx not in seen_videos:
+                seen_videos.append(idx)
+        if len(seen_videos) > counter:
+            seen_videos = seen_videos[:counter]
+        clean_state = {
+            "counter": counter,
+            "seen_videos": seen_videos,
+            "n_max_videos": self.n_max_videos,
+        }
+        self._write_state(clean_state)
+        return clean_state
+
+    def _write_state(self, state):
+        try:
+            with open(self.state_file, "w", encoding="utf-8") as f:
+                json.dump(state, f)
+        except OSError:
+            pass
+        else:
+            self.state = state
+
+    def _prepare_state_payload(self):
+        state = self._load_state()
+        counter = int(state.get("counter", 0))
+        try:
+            limit = int(state.get("n_max_videos", self.n_max_videos))
+        except (TypeError, ValueError):
+            limit = self.n_max_videos
+        if limit <= 0:
+            limit = max(1, self.n_max_videos)
+        self.n_max_videos = limit
+        counter = max(0, min(counter, limit))
+        raw_seen = state.get("seen_videos", [])
+        seen_videos = []
+        for candidate in raw_seen:
+            try:
+                idx = int(candidate)
+            except (TypeError, ValueError):
+                continue
+            if 0 <= idx < len(self.thumbnails) and idx not in seen_videos:
+                seen_videos.append(idx)
+        if len(seen_videos) > counter:
+            seen_videos = seen_videos[:counter]
+        thumbnails_seen = [self.thumbnails[i] for i in seen_videos]
+        gallery_columns = limit if limit > 0 else 1
+        progress_plot = self.gen_progress_plot(limit, counter)
+        display_max_value = str(limit)
+        radio_choices = {4, 5, 6, 7, 8}
+        radio_value = limit if limit in radio_choices else min(max(limit, 4), 8)
+        return (
+            counter,
+            limit,
+            seen_videos,
+            str(counter),
+            gr.update(value=thumbnails_seen or None, columns=gallery_columns),
+            progress_plot,
+            display_max_value,
+            gr.update(value=radio_value),
+        )
+
+    def _save_state(self, counter, seen_videos, n_max_videos=None):
+        limit = n_max_videos if n_max_videos is not None else self.n_max_videos
+        try:
+            limit = int(limit)
+        except (TypeError, ValueError):
+            limit = self.n_max_videos
+        if limit > 0:
+            self.n_max_videos = limit
+        cleaned_seen = []
+        for candidate in seen_videos:
+            try:
+                idx = int(candidate)
+            except (TypeError, ValueError):
+                continue
+            if 0 <= idx < len(self.thumbnails) and idx not in cleaned_seen:
+                cleaned_seen.append(idx)
+        state = {
+            "counter": max(0, min(int(counter), self.n_max_videos)),
+            "seen_videos": cleaned_seen,
+            "n_max_videos": self.n_max_videos,
+        }
+        self._write_state(state)
+
     def check_video_counter(self, counter: int, video: str, n_max_videos: int):
         if counter > n_max_videos:
             return gr.update(value=None, interactive=False), n_max_videos
@@ -55,19 +176,37 @@ class WebApp:
     def select_thumbnail(
         self, event: gr.EventData, counter: int, n_max_videos: int, seen_videos: list
     ):
+        try:
+            current_limit = int(n_max_videos)
+        except (TypeError, ValueError):
+            current_limit = self.n_max_videos
+        if current_limit <= 0:
+            current_limit = max(1, self.n_max_videos)
+        seen_videos = list(seen_videos or [])
         counter += 1
-        if counter <= n_max_videos:
-            index = event._data.get("index")
-            seen_videos.append(index)
-            video_update = gr.update(
-                value=self.video_files[index], visible=True, autoplay=True
-            )
-            tabs_update = gr.update(selected=1)
+        if counter <= current_limit:
+            raw_index = event._data.get("index")
+            try:
+                idx = int(raw_index)
+            except (TypeError, ValueError):
+                idx = None
+            if idx is not None and 0 <= idx < len(self.video_files):
+                if idx not in seen_videos:
+                    seen_videos.append(idx)
+                video_update = gr.update(
+                    value=self.video_files[idx], visible=True, autoplay=True
+                )
+                tabs_update = gr.update(selected=1)
+            else:
+                counter -= 1
+                video_update = gr.update(value=None, visible=False, autoplay=False)
+                tabs_update = gr.update(selected=0)
         else:
-            counter = n_max_videos
+            counter = current_limit
             video_update = gr.update(value=None, visible=False, autoplay=False)
             tabs_update = gr.update(selected=0)
-        progress_plot = self.gen_progress_plot(n_max_videos, counter)
+        progress_plot = self.gen_progress_plot(current_limit, counter)
+        self._save_state(counter, seen_videos, current_limit)
         return counter, video_update, tabs_update, seen_videos, progress_plot
 
     def compute_time_passed_f(self, start_time: datetime.datetime):
@@ -105,7 +244,7 @@ class WebApp:
             else:
                 info_update = None
         return video, tab_update, info_update
-    
+
     def end_info_video(self):
         return gr.update(selected=2)
 
@@ -125,28 +264,31 @@ class WebApp:
             values,
             colors=colors,
             labels=labels,
-            wedgeprops=dict(edgecolor="black")  # Black borders for visibility
+            wedgeprops=dict(edgecolor="black"),  # Black borders for visibility
         )
-        
+
         return fig
 
-    def update_max_videos(self, n_max_videos: int, counter: int):
-        progress_plot = self.gen_progress_plot(n_max_videos, counter)
-        return n_max_videos, n_max_videos, progress_plot
-
+    def update_max_videos(self, n_max_videos: int, counter: int, seen_videos: list):
+        seen_videos = list(seen_videos or [])
+        self._save_state(counter, seen_videos, n_max_videos)
+        return self._prepare_state_payload()
 
     def launch(self):
         css = """
         .info textarea {font-size: 2em; !important; color: %s;}
         .info2 textarea {font-size: 2em; color: %s;}
-        """ % (self.color_done, self.color_undone)
+        """ % (
+            self.color_done,
+            self.color_undone,
+        )
 
         with gr.Blocks(css=css) as demo:
             # State
-            st_counter = gr.State(value=0)
+            st_counter = gr.State(value=self.state.get("counter", 0))
             st_start = gr.State(value=now())
             st_n_max_videos = gr.State(value=self.n_max_videos)
-            st_seen_videos = gr.State(value=[])
+            st_seen_videos = gr.State(value=self.state.get("seen_videos", []))
             # Layout
             gr.Markdown(f"## {self.title}")
             if self.information:
@@ -169,17 +311,32 @@ class WebApp:
                             info_video = gr.Video(None, visible=False)
                 with gr.Column(scale=1):
                     display_counter = gr.Textbox(
-                        st_counter.value, label="Counter", elem_classes="info"
+                        str(self.state.get("counter", 0)),
+                        label="Counter",
+                        elem_classes="info",
                     )
                     display_max = gr.Textbox(
-                        st_n_max_videos.value, label="Max Videos", interactive=False, elem_classes="info2"
+                        str(self.state.get("n_max_videos", self.n_max_videos)),
+                        label="Max Videos",
+                        interactive=False,
+                        elem_classes="info2",
                     )
-                    progress_plot = gr.Plot(value=self.gen_progress_plot(st_n_max_videos.value, 0))
+                    progress_plot = gr.Plot(
+                        value=self.gen_progress_plot(
+                            self.state.get("n_max_videos", self.n_max_videos),
+                            self.state.get("counter", 0),
+                        )
+                    )
             display_seen_videos = gr.Gallery(
-                None,
+                [
+                    self.thumbnails[i]
+                    for i in self.state.get("seen_videos", [])
+                    if 0 <= i < len(self.thumbnails)
+                ]
+                or None,
                 label="Seen videos",
                 interactive=False,
-                columns=st_n_max_videos.value,
+                columns=self.state.get("n_max_videos", self.n_max_videos),
             )
             with gr.Accordion(label="Parental control", open=False):
                 display_start = gr.Textbox(
@@ -191,10 +348,30 @@ class WebApp:
                         label="Time passed (minutes:seconds)", value="0:00"
                     )
                 parental_max_videos = gr.Radio(
-                    choices=[4, 5, 6, 7, 8], value=4, label="Max videos"
+                    choices=[4, 5, 6, 7, 8],
+                    value=min(
+                        max(self.state.get("n_max_videos", self.n_max_videos), 4),
+                        8,
+                    ),
+                    label="Max videos",
                 )
 
             # Bindings
+            demo.load(
+                fn=self._prepare_state_payload,
+                inputs=None,
+                outputs=[
+                    st_counter,
+                    st_n_max_videos,
+                    st_seen_videos,
+                    display_counter,
+                    display_seen_videos,
+                    progress_plot,
+                    display_max,
+                    parental_max_videos,
+                ],
+            )
+
             video.end(
                 fn=self.end_video,
                 inputs=[video, st_counter, st_n_max_videos],
@@ -222,20 +399,21 @@ class WebApp:
                 inputs=None,
                 outputs=thumbnail_gallery,
             )
-            
+
             thumbnail_gallery.select(
                 fn=self.select_thumbnail,
                 inputs=[st_counter, st_n_max_videos, st_seen_videos],
                 outputs=[st_counter, video, tabs, st_seen_videos, progress_plot],
             ).then(
-                fn=lambda x: x,
+                fn=lambda x: str(x),
                 inputs=st_counter,
                 outputs=display_counter,
             ).then(
-                fn=lambda x: gr.update(
-                    value=[self.thumbnails[i] for i in x], columns=st_n_max_videos.value
+                fn=lambda seen, limit: gr.update(
+                    value=[self.thumbnails[i] for i in (seen or [])],
+                    columns=limit if limit > 0 else 1,
                 ),
-                inputs=st_seen_videos,
+                inputs=[st_seen_videos, st_n_max_videos],
                 outputs=display_seen_videos,
             )
 
@@ -247,8 +425,17 @@ class WebApp:
 
             parental_max_videos.select(
                 fn=self.update_max_videos,
-                inputs=[parental_max_videos, st_counter],
-                outputs=[st_n_max_videos, display_max, progress_plot],
+                inputs=[parental_max_videos, st_counter, st_seen_videos],
+                outputs=[
+                    st_counter,
+                    st_n_max_videos,
+                    st_seen_videos,
+                    display_counter,
+                    display_seen_videos,
+                    progress_plot,
+                    display_max,
+                    parental_max_videos,
+                ],
             )
 
         demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=7860)
