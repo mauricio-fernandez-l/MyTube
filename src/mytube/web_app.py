@@ -283,7 +283,7 @@ class WebApp:
             self.color_undone,
         )
 
-        with gr.Blocks(css=css) as demo:
+        with gr.Blocks() as demo:
             # State
             st_counter = gr.State(value=self.state.get("counter", 0))
             st_start = gr.State(value=now())
@@ -438,4 +438,4 @@ class WebApp:
                 ],
             )
 
-        demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=7860)
+        demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=7860, css=css)
