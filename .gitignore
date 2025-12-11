@@ -9,3 +9,4 @@ site
 .venv*
 images
 webapp_state.json
+config.yaml

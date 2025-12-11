@@ -84,7 +84,7 @@ class WebApp:
                 idx = int(candidate)
             except (TypeError, ValueError):
                 continue
-            if 0 <= idx < len(self.thumbnails) and idx not in seen_videos:
+            if 0 <= idx < len(self.thumbnails):
                 seen_videos.append(idx)
         if len(seen_videos) > counter:
             seen_videos = seen_videos[:counter]
@@ -123,7 +123,7 @@ class WebApp:
                 idx = int(candidate)
             except (TypeError, ValueError):
                 continue
-            if 0 <= idx < len(self.thumbnails) and idx not in seen_videos:
+            if 0 <= idx < len(self.thumbnails):
                 seen_videos.append(idx)
         if len(seen_videos) > counter:
             seen_videos = seen_videos[:counter]
@@ -158,7 +158,7 @@ class WebApp:
                 idx = int(candidate)
             except (TypeError, ValueError):
                 continue
-            if 0 <= idx < len(self.thumbnails) and idx not in cleaned_seen:
+            if 0 <= idx < len(self.thumbnails):
                 cleaned_seen.append(idx)
         state = {
             "counter": max(0, min(int(counter), self.n_max_videos)),
@@ -191,8 +191,7 @@ class WebApp:
             except (TypeError, ValueError):
                 idx = None
             if idx is not None and 0 <= idx < len(self.video_files):
-                if idx not in seen_videos:
-                    seen_videos.append(idx)
+                seen_videos.append(idx)
                 video_update = gr.update(
                     value=self.video_files[idx], visible=True, autoplay=True
                 )
@@ -274,6 +273,41 @@ class WebApp:
         self._save_state(counter, seen_videos, n_max_videos)
         return self._prepare_state_payload()
 
+    def undo_last_video(self, counter: int, seen_videos: list, n_max_videos: int):
+        """Remove the most recent selection and roll back counter/state."""
+        seen_videos = list(seen_videos or [])
+        try:
+            limit = int(n_max_videos)
+        except (TypeError, ValueError):
+            limit = self.n_max_videos
+        if limit <= 0:
+            limit = max(1, self.n_max_videos)
+
+        if counter > 0:
+            counter -= 1
+        if seen_videos:
+            seen_videos = seen_videos[:-1]
+
+        self._save_state(counter, seen_videos, limit)
+
+        seen_gallery = gr.update(
+            value=[self.thumbnails[i] for i in seen_videos] or None,
+            columns=limit if limit > 0 else 1,
+        )
+        progress_plot = self.gen_progress_plot(limit, counter)
+        video_update = gr.update(value=None, visible=False, autoplay=False)
+        info_update = gr.update(value=None, visible=False, autoplay=False)
+
+        return (
+            counter,
+            seen_videos,
+            str(counter),
+            seen_gallery,
+            progress_plot,
+            video_update,
+            info_update,
+        )
+
     def launch(self):
         css = """
         .info textarea {font-size: 2em; !important; color: %s;}
@@ -283,7 +317,7 @@ class WebApp:
             self.color_undone,
         )
 
-        with gr.Blocks(css=css) as demo:
+        with gr.Blocks() as demo:
             # State
             st_counter = gr.State(value=self.state.get("counter", 0))
             st_start = gr.State(value=now())
@@ -305,10 +339,10 @@ class WebApp:
                             )
                         with gr.Tab(label="Video", id=1):
                             video = gr.Video(
-                                value=None, scale=3, autoplay=True, visible=False
+                                value=None, scale=3, autoplay=True, visible=True
                             )
                         with gr.Tab(label="Info", id=0):
-                            info_video = gr.Video(None, visible=False)
+                            info_video = gr.Video(None, visible=True)
                 with gr.Column(scale=1):
                     display_counter = gr.Textbox(
                         str(self.state.get("counter", 0)),
@@ -347,6 +381,7 @@ class WebApp:
                     display_time_passed = gr.Textbox(
                         label="Time passed (minutes:seconds)", value="0:00"
                     )
+                undo_last_video_btn = gr.Button("Undo last video")
                 parental_max_videos = gr.Radio(
                     choices=[4, 5, 6, 7, 8],
                     value=min(
@@ -438,4 +473,18 @@ class WebApp:
                 ],
             )
 
-        demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=7860)
+            undo_last_video_btn.click(
+                fn=self.undo_last_video,
+                inputs=[st_counter, st_seen_videos, st_n_max_videos],
+                outputs=[
+                    st_counter,
+                    st_seen_videos,
+                    display_counter,
+                    display_seen_videos,
+                    progress_plot,
+                    video,
+                    info_video,
+                ],
+            )
+
+        demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=7860, css=css)
