@@ -274,6 +274,41 @@ class WebApp:
         self._save_state(counter, seen_videos, n_max_videos)
         return self._prepare_state_payload()
 
+    def undo_last_video(self, counter: int, seen_videos: list, n_max_videos: int):
+        """Remove the most recent selection and roll back counter/state."""
+        seen_videos = list(seen_videos or [])
+        try:
+            limit = int(n_max_videos)
+        except (TypeError, ValueError):
+            limit = self.n_max_videos
+        if limit <= 0:
+            limit = max(1, self.n_max_videos)
+
+        if counter > 0:
+            counter -= 1
+        if seen_videos:
+            seen_videos = seen_videos[:-1]
+
+        self._save_state(counter, seen_videos, limit)
+
+        seen_gallery = gr.update(
+            value=[self.thumbnails[i] for i in seen_videos] or None,
+            columns=limit if limit > 0 else 1,
+        )
+        progress_plot = self.gen_progress_plot(limit, counter)
+        video_update = gr.update(value=None, visible=False, autoplay=False)
+        info_update = gr.update(value=None, visible=False, autoplay=False)
+
+        return (
+            counter,
+            seen_videos,
+            str(counter),
+            seen_gallery,
+            progress_plot,
+            video_update,
+            info_update,
+        )
+
     def launch(self):
         css = """
         .info textarea {font-size: 2em; !important; color: %s;}
@@ -347,6 +382,7 @@ class WebApp:
                     display_time_passed = gr.Textbox(
                         label="Time passed (minutes:seconds)", value="0:00"
                     )
+                undo_last_video_btn = gr.Button("Undo last video")
                 parental_max_videos = gr.Radio(
                     choices=[4, 5, 6, 7, 8],
                     value=min(
@@ -435,6 +471,20 @@ class WebApp:
                     progress_plot,
                     display_max,
                     parental_max_videos,
+                ],
+            )
+
+            undo_last_video_btn.click(
+                fn=self.undo_last_video,
+                inputs=[st_counter, st_seen_videos, st_n_max_videos],
+                outputs=[
+                    st_counter,
+                    st_seen_videos,
+                    display_counter,
+                    display_seen_videos,
+                    progress_plot,
+                    video,
+                    info_video,
                 ],
             )
 
