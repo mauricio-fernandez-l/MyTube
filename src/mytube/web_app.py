@@ -305,10 +305,10 @@ class WebApp:
                             )
                         with gr.Tab(label="Video", id=1):
                             video = gr.Video(
-                                value=None, scale=3, autoplay=True, visible=False
+                                value=None, scale=3, autoplay=True, visible=True
                             )
                         with gr.Tab(label="Info", id=0):
-                            info_video = gr.Video(None, visible=False)
+                            info_video = gr.Video(None, visible=True)
                 with gr.Column(scale=1):
                     display_counter = gr.Textbox(
                         str(self.state.get("counter", 0)),
