@@ -84,7 +84,7 @@ class WebApp:
                 idx = int(candidate)
             except (TypeError, ValueError):
                 continue
-            if 0 <= idx < len(self.thumbnails) and idx not in seen_videos:
+            if 0 <= idx < len(self.thumbnails):
                 seen_videos.append(idx)
         if len(seen_videos) > counter:
             seen_videos = seen_videos[:counter]
@@ -123,7 +123,7 @@ class WebApp:
                 idx = int(candidate)
             except (TypeError, ValueError):
                 continue
-            if 0 <= idx < len(self.thumbnails) and idx not in seen_videos:
+            if 0 <= idx < len(self.thumbnails):
                 seen_videos.append(idx)
         if len(seen_videos) > counter:
             seen_videos = seen_videos[:counter]
@@ -158,7 +158,7 @@ class WebApp:
                 idx = int(candidate)
             except (TypeError, ValueError):
                 continue
-            if 0 <= idx < len(self.thumbnails) and idx not in cleaned_seen:
+            if 0 <= idx < len(self.thumbnails):
                 cleaned_seen.append(idx)
         state = {
             "counter": max(0, min(int(counter), self.n_max_videos)),
@@ -191,8 +191,7 @@ class WebApp:
             except (TypeError, ValueError):
                 idx = None
             if idx is not None and 0 <= idx < len(self.video_files):
-                if idx not in seen_videos:
-                    seen_videos.append(idx)
+                seen_videos.append(idx)
                 video_update = gr.update(
                     value=self.video_files[idx], visible=True, autoplay=True
                 )
