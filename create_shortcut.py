@@ -1,6 +1,7 @@
-from PIL import Image
-import win32com.client
 from pathlib import Path
+
+import win32com.client
+from PIL import Image
 
 # Configuration
 PNG_PATH = "images/my_image.png"  # Change this to your PNG file path

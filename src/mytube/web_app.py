@@ -1,10 +1,11 @@
 # %%
 
-import gradio as gr
-import glob
-import os
 import datetime
+import glob
 import json
+import os
+
+import gradio as gr
 import matplotlib.pyplot as plt
 
 now = datetime.datetime.now
@@ -206,7 +207,17 @@ class WebApp:
             tabs_update = gr.update(selected=0)
         progress_plot = self.gen_progress_plot(current_limit, counter)
         self._save_state(counter, seen_videos, current_limit)
-        return counter, video_update, tabs_update, seen_videos, progress_plot
+
+        # Force the browser video element to fully reset before loading the next
+        # source to avoid getting stuck in the "loading" overlay while audio plays.
+        yield (
+            counter,
+            gr.update(value=None, visible=True, autoplay=False),
+            tabs_update,
+            seen_videos,
+            progress_plot,
+        )
+        yield counter, video_update, tabs_update, seen_videos, progress_plot
 
     def compute_time_passed_f(self, start_time: datetime.datetime):
         dt = now() - start_time
@@ -216,33 +227,47 @@ class WebApp:
         return output
 
     def end_video(self, video: str, counter: int, n_max_videos: int):
-        video = gr.update(value=None, visible=False, autoplay=False)
+        # Always clear the player first so re-playing the same info video works after undo.
+        video_clear = gr.update(value=None, visible=True, autoplay=False)
+
         if counter < n_max_videos - 1:
             tab_update = gr.update(selected=2)
-            info_update = None
+            info_steps = [gr.update(value=None, visible=True, autoplay=False)]
         elif counter == n_max_videos - 1:
             tab_update = gr.update(selected=0)
             if os.path.exists(self.only_one_more_path):
-                info_update = gr.update(
-                    value=self.only_one_more_path,
-                    interactive=False,
-                    visible=True,
-                    autoplay=True,
-                )
+                info_steps = [
+                    gr.update(value=None, visible=True, autoplay=False),
+                    gr.update(
+                        value=self.only_one_more_path,
+                        interactive=False,
+                        visible=True,
+                        autoplay=True,
+                    ),
+                ]
             else:
-                info_update = None
+                info_steps = [gr.update(value=None, visible=True, autoplay=False)]
         else:
             tab_update = gr.update(selected=0)
             if os.path.exists(self.finished_path):
-                info_update = gr.update(
-                    value=self.finished_path,
-                    interactive=False,
-                    visible=True,
-                    autoplay=True,
-                )
+                info_steps = [
+                    gr.update(value=None, visible=True, autoplay=False),
+                    gr.update(
+                        value=self.finished_path,
+                        interactive=False,
+                        visible=True,
+                        autoplay=True,
+                    ),
+                ]
             else:
-                info_update = None
-        return video, tab_update, info_update
+                info_steps = [gr.update(value=None, visible=True, autoplay=False)]
+
+        # Step 1: clear info video to force reload even if the same file is played again.
+        yield video_clear, tab_update, info_steps[0]
+
+        # Step 2: play the requested info video when available.
+        if len(info_steps) > 1:
+            yield video_clear, tab_update, info_steps[1]
 
     def end_info_video(self):
         return gr.update(selected=2)
@@ -295,8 +320,8 @@ class WebApp:
             columns=limit if limit > 0 else 1,
         )
         progress_plot = self.gen_progress_plot(limit, counter)
-        video_update = gr.update(value=None, visible=False, autoplay=False)
-        info_update = gr.update(value=None, visible=False, autoplay=False)
+        video_update = gr.update(value=None, visible=True, autoplay=False)
+        info_update = gr.update(value=None, visible=True, autoplay=False)
 
         return (
             counter,
