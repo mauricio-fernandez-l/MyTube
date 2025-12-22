@@ -1,6 +1,6 @@
 [project]
 name = "mytube"
-version = "2025.12.11"
+version = "2025.12.22"
 description = "Simple package for downloading, editing and displaying YouTube videos."
 authors = [
     { name = "Mauricio Fernández", email = "mauricio.fernandez.lb@gmail.com" }
@@ -12,6 +12,9 @@ dependencies = [
     "gradio",
     "matplotlib"
 ]
+
+[project.scripts]
+mytube = "mytube.cli:main"
 
 [project.optional-dependencies]
 # Install with: pip install .[docs]
