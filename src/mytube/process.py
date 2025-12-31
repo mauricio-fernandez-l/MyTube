@@ -111,8 +111,10 @@ class VideosProcessor:
         path = os.path.join(self.videos_dir, video_name)
         if not os.path.exists(path):
             raise FileNotFoundError(f"Video file {path} not found")
-        shutil.copy(path, os.path.join(self.videos_dir, "processed"))
-        path_processed = os.path.join(self.videos_dir, "processed", video_name)
+        processed_dir = os.path.join(self.videos_dir, "processed")
+        os.makedirs(processed_dir, exist_ok=True)
+        shutil.copy(path, processed_dir)
+        path_processed = os.path.join(processed_dir, video_name)
         ThumbnailGenerator.run(path_processed)
 
 
