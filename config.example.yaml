@@ -1,0 +1,58 @@
+# MyTube Configuration
+# Copy this file to config.yaml and adjust to your device/preferences
+
+# =============================================================================
+# PATHS - Device-specific paths
+# =============================================================================
+paths:
+  # Project root directory (auto-detected if empty, useful for portable installs)
+  project_dir: ""
+  
+  # Source videos folder (where raw videos and .csv cut definitions are stored)
+  videos_folder: "videos"
+  
+  # Processed videos folder (where cut clips are saved)
+  processed_videos_folder: "videos/processed"
+  
+  # Info videos for parental control messages
+  only_one_more_video: "videos/info/one_more.mp4"
+  finished_video: "videos/info/finished.mp4"
+
+# =============================================================================
+# DESKTOP SHORTCUT - Settings for create_shortcut.py
+# =============================================================================
+shortcut:
+  # Name of the desktop shortcut
+  name: "MyTube"
+  
+  # Path to the PNG icon (will be converted to .ico)
+  icon_png: "images/my_image.png"
+  
+  # Where to save the generated .ico file (relative to project)
+  icon_ico: "images/MyTube.ico"
+
+# =============================================================================
+# WEB APP - Settings for the Gradio web interface
+# =============================================================================
+webapp:
+  # Title shown in the web app header
+  title: "MyTube"
+  
+  # Subtitle/information text (optional)
+  information: ""
+  
+  # Maximum number of videos before parental lock
+  n_max_videos: 4
+  
+  # Progress chart colors (hex or named colors)
+  color_done: "#fca903"
+  color_undone: "#03fcdf"
+  
+  # Server settings
+  server:
+    # Host to bind to (use "0.0.0.0" for network access, "127.0.0.1" for local only)
+    host: "0.0.0.0"
+    # Port number
+    port: 7860
+    # Open browser automatically on launch
+    open_browser: true

@@ -10,7 +10,8 @@ dependencies = [
     "moviepy",
     "opencv-python",
     "gradio",
-    "matplotlib"
+    "matplotlib",
+    "pyyaml"
 ]
 
 [project.optional-dependencies]

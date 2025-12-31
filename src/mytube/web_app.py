@@ -333,7 +333,7 @@ class WebApp:
             info_update,
         )
 
-    def launch(self):
+    def launch(self, server_name="0.0.0.0", server_port=7860, inbrowser=True):
         css = """
         .info textarea {font-size: 2em; !important; color: %s;}
         .info2 textarea {font-size: 2em; color: %s;}
@@ -512,4 +512,9 @@ class WebApp:
                 ],
             )
 
-        demo.launch(inbrowser=True, server_name="0.0.0.0", server_port=7860, css=css)
+        demo.launch(
+            inbrowser=inbrowser,
+            server_name=server_name,
+            server_port=server_port,
+            css=css,
+        )
