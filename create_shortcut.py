@@ -36,7 +36,7 @@ def create_shortcut():
     # Create launcher batch file
     batch_content = f"""@echo off
 cd /d "{project_dir}"
-.venv\\Scripts\\python.exe launch.py
+.venv\\Scripts\\mytube.exe -wa
 """
     batch_path = project_dir / "launch.bat"
     with open(batch_path, "w") as f:
