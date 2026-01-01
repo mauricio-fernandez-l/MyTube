@@ -1,0 +1,52 @@
+name: Update Version on Merge
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    # Skip if the commit was made by this action (prevents infinite loop)
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, 'chore: update version')"
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update version in pyproject.toml
+        run: |
+          # Get current date in year.month.day format (no leading zeros)
+          YEAR=$(date +%Y)
+          MONTH=$(date +%-m)
+          DAY=$(date +%-d)
+          NEW_VERSION="${YEAR}.${MONTH}.${DAY}"
+          
+          echo "Setting version to: $NEW_VERSION"
+          
+          # Update the version line in pyproject.toml
+          sed -i "s/^version = \".*\"/version = \"${NEW_VERSION}\"/" pyproject.toml
+          
+          # Show the change
+          grep "^version" pyproject.toml
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if there are changes
+          if git diff --quiet pyproject.toml; then
+            echo "Version already up to date, no changes needed"
+          else
+            git add pyproject.toml
+            git commit -m "chore: update version to $(date +%Y.%-m.%-d) [skip ci]"
+            git push
+            echo "Version updated successfully"
+          fi
