@@ -28,6 +28,7 @@ paths:
 shortcut:
   name: "MyTube"
   icon_png: "images/my_image.png"
+  python_args: "-m mytube.cli -wa"
 
 webapp:
   title: "MyTube"
@@ -113,4 +114,5 @@ w.launch()
     python create_shortcut.py
     ```
 
-The shortcut will launch `mytube -wa` using settings from `config.yaml`.
+The shortcut runs Python directly (no intermediate `.bat`) with `shortcut.python_args` from `config.yaml`.
+By default this is `-m mytube.cli -wa`.

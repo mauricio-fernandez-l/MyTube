@@ -10,3 +10,4 @@ site
 images
 webapp_state.json
 config.yaml
+my_data*

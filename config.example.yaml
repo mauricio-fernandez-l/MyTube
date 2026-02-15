@@ -25,11 +25,11 @@ shortcut:
   # Name of the desktop shortcut
   name: "MyTube"
   
-  # Path to the PNG icon (will be converted to .ico)
+  # Path to the PNG icon (multi-size PNGs + .ico will be generated next to this file)
   icon_png: "images/my_image.png"
-  
-  # Where to save the generated .ico file (relative to project)
-  icon_ico: "images/MyTube.ico"
+
+  # Python arguments used by the shortcut target
+  python_args: "-m mytube.cli -wa"
 
 # =============================================================================
 # WEB APP - Settings for the Gradio web interface
