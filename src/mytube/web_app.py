@@ -17,13 +17,13 @@ class WebApp:
     def __init__(
         self,
         title: str = "MyTube",
-        information: str = None,
+        information: str | None = None,
         processed_videos_folder: str = "videos/processed",
         n_max_videos: int = 4,
-        only_one_more_path="videos/info/one_more.mp4",
-        finished_path="videos/info/finished.mp4",
-        color_done="#fca903",
-        color_undone="#03fcdf",
+        only_one_more_path: str = "videos/info/one_more.mp4",
+        finished_path: str = "videos/info/finished.mp4",
+        color_done: str = "#fca903",
+        color_undone: str = "#03fcdf",
     ):
         self.title = title
         self.information = information
