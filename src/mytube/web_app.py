@@ -14,16 +14,20 @@ now = datetime.datetime.now
 
 
 class WebApp:
+    TAB_INFO = "info"
+    TAB_VIDEO = "video"
+    TAB_COLLECTION = "collection"
+
     def __init__(
         self,
         title: str = "MyTube",
-        information: str = None,
+        information: str | None = None,
         processed_videos_folder: str = "videos/processed",
         n_max_videos: int = 4,
-        only_one_more_path="videos/info/one_more.mp4",
-        finished_path="videos/info/finished.mp4",
-        color_done="#fca903",
-        color_undone="#03fcdf",
+        only_one_more_path: str = "videos/info/one_more.mp4",
+        finished_path: str = "videos/info/finished.mp4",
+        color_done: str = "#fca903",
+        color_undone: str = "#03fcdf",
     ):
         self.title = title
         self.information = information
@@ -175,7 +179,11 @@ class WebApp:
             return gr.update(value=video), counter
 
     def select_thumbnail(
-        self, event: gr.EventData, counter: int, n_max_videos: int, seen_videos: list
+        self,
+        event: gr.SelectData,
+        counter: int,
+        n_max_videos: int,
+        seen_videos: list,
     ):
         try:
             current_limit = int(n_max_videos)
@@ -184,27 +192,34 @@ class WebApp:
         if current_limit <= 0:
             current_limit = max(1, self.n_max_videos)
         seen_videos = list(seen_videos or [])
-        counter += 1
-        if counter <= current_limit:
-            raw_index = event._data.get("index")
+        data = getattr(event, "_data", {}) or {}
+        raw_index = data.get("index", getattr(event, "index", None))
+
+        idx = None
+        if isinstance(raw_index, int) and not isinstance(raw_index, bool):
+            idx = raw_index
+        elif isinstance(raw_index, str):
             try:
                 idx = int(raw_index)
-            except (TypeError, ValueError):
+            except ValueError:
                 idx = None
-            if idx is not None and 0 <= idx < len(self.video_files):
-                seen_videos.append(idx)
-                video_update = gr.update(
-                    value=self.video_files[idx], visible=True, autoplay=True
-                )
-                tabs_update = gr.update(selected=1)
-            else:
-                counter -= 1
-                video_update = gr.update(value=None, visible=False, autoplay=False)
-                tabs_update = gr.update(selected=0)
+
+        if idx is None or not (0 <= idx < len(self.video_files)):
+            progress_plot = self.gen_progress_plot(current_limit, counter)
+            yield counter, gr.update(), gr.update(), seen_videos, progress_plot
+            return
+
+        if counter < current_limit:
+            counter += 1
+            seen_videos.append(idx)
+            video_update = gr.update(
+                value=self.video_files[idx], visible=True, autoplay=True
+            )
+            tabs_update = gr.update(selected=self.TAB_VIDEO)
         else:
             counter = current_limit
             video_update = gr.update(value=None, visible=False, autoplay=False)
-            tabs_update = gr.update(selected=0)
+            tabs_update = gr.update(selected=self.TAB_INFO)
         progress_plot = self.gen_progress_plot(current_limit, counter)
         self._save_state(counter, seen_videos, current_limit)
 
@@ -227,20 +242,31 @@ class WebApp:
         return output
 
     def end_video(self, video: str, counter: int, n_max_videos: int):
+        try:
+            current_counter = int(counter)
+        except (TypeError, ValueError):
+            current_counter = 0
+        try:
+            current_limit = int(n_max_videos)
+        except (TypeError, ValueError):
+            current_limit = self.n_max_videos
+        if current_limit <= 0:
+            current_limit = max(1, self.n_max_videos)
+
         # Always clear the player first so re-playing the same info video works after undo.
         video_clear = gr.update(value=None, visible=True, autoplay=False)
 
-        if counter < n_max_videos - 1:
-            tab_update = gr.update(selected=2)
+        if current_counter < current_limit - 1:
+            tab_update = gr.update(selected=self.TAB_COLLECTION)
             info_steps = [gr.update(value=None, visible=True, autoplay=False)]
-        elif counter == n_max_videos - 1:
-            tab_update = gr.update(selected=0)
+        elif current_counter == current_limit - 1:
+            tab_update = gr.update(selected=self.TAB_INFO)
             if os.path.exists(self.only_one_more_path):
                 info_steps = [
                     gr.update(value=None, visible=True, autoplay=False),
                     gr.update(
                         value=self.only_one_more_path,
-                        interactive=False,
+                        interactive=True,
                         visible=True,
                         autoplay=True,
                     ),
@@ -248,13 +274,13 @@ class WebApp:
             else:
                 info_steps = [gr.update(value=None, visible=True, autoplay=False)]
         else:
-            tab_update = gr.update(selected=0)
+            tab_update = gr.update(selected=self.TAB_INFO)
             if os.path.exists(self.finished_path):
                 info_steps = [
                     gr.update(value=None, visible=True, autoplay=False),
                     gr.update(
                         value=self.finished_path,
-                        interactive=False,
+                        interactive=True,
                         visible=True,
                         autoplay=True,
                     ),
@@ -269,8 +295,10 @@ class WebApp:
         if len(info_steps) > 1:
             yield video_clear, tab_update, info_steps[1]
 
-    def end_info_video(self):
-        return gr.update(selected=2)
+    def end_info_video(self, info_video: str | None):
+        if not info_video:
+            return gr.update()
+        return gr.update(selected=self.TAB_COLLECTION)
 
     def gen_progress_plot(self, n_total: int, n_done: int):
         # Define colors for "done" and "undone" sections
@@ -355,18 +383,18 @@ class WebApp:
             with gr.Row():
                 with gr.Column(scale=4):
                     with gr.Tabs() as tabs:
-                        with gr.Tab(label="Collection", id=2):
+                        with gr.Tab(label="Collection", id=self.TAB_COLLECTION):
                             thumbnail_gallery = gr.Gallery(
                                 self.thumbnails,
                                 label="Thumbnails",
                                 allow_preview=False,
                                 columns=5,
                             )
-                        with gr.Tab(label="Video", id=1):
+                        with gr.Tab(label="Video", id=self.TAB_VIDEO):
                             video = gr.Video(
                                 value=None, scale=3, autoplay=True, visible=True
                             )
-                        with gr.Tab(label="Info", id=0):
+                        with gr.Tab(label="Info", id=self.TAB_INFO):
                             info_video = gr.Video(None, visible=True)
                 with gr.Column(scale=1):
                     display_counter = gr.Textbox(
@@ -436,28 +464,12 @@ class WebApp:
                 fn=self.end_video,
                 inputs=[video, st_counter, st_n_max_videos],
                 outputs=[video, tabs, info_video],
-            ).then(
-                fn=lambda: gr.update(value=[]),
-                inputs=None,
-                outputs=thumbnail_gallery,
-            ).then(
-                fn=lambda: gr.update(value=self.thumbnails),
-                inputs=None,
-                outputs=thumbnail_gallery,
             )
 
             info_video.end(
                 fn=self.end_info_video,
-                inputs=None,
+                inputs=[info_video],
                 outputs=[tabs],
-            ).then(
-                fn=lambda: gr.update(value=[]),
-                inputs=None,
-                outputs=thumbnail_gallery,
-            ).then(
-                fn=lambda: gr.update(value=self.thumbnails),
-                inputs=None,
-                outputs=thumbnail_gallery,
             )
 
             thumbnail_gallery.select(
