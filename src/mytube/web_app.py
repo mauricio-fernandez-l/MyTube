@@ -1,7 +1,6 @@
 # %%
 
 import datetime
-import base64
 import glob
 import json
 import os
@@ -39,7 +38,9 @@ class WebApp:
         self.video_files = sorted(glob.glob(f"{self.processed_videos_folder}/*.mp4"))
         self.thumbnail_folder = os.path.join(self.processed_videos_folder, "thumbnails")
         self.thumbnails = self._get_thumbnails()
-        self.empty_thumbnail = self._ensure_empty_thumbnail()
+        self.empty_thumbnail = os.path.join(
+            os.path.dirname(__file__), "data", "finished.png"
+        )
         self.collection_thumbnails = [self.empty_thumbnail, *self.thumbnails]
         self.color_done = color_done
         self.color_undone = color_undone
@@ -47,18 +48,6 @@ class WebApp:
         print(f"WebApp state file: {self.state_file}")
         self._write_state(self._default_state())
         self.state = self._load_state()
-
-    def _ensure_empty_thumbnail(self):
-        os.makedirs(self.thumbnail_folder, exist_ok=True)
-        empty_path = os.path.join(self.thumbnail_folder, "__empty__.png")
-        if not os.path.exists(empty_path):
-            white_pixel_png = (
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8"
-                "/x8AAwMCAO5Vn9sAAAAASUVORK5CYII="
-            )
-            with open(empty_path, "wb") as f:
-                f.write(base64.b64decode(white_pixel_png))
-        return empty_path
 
     def _get_thumbnails(self):
         thumbnails = []
@@ -332,17 +321,21 @@ class WebApp:
     def end_info_video(self, info_video: str | None):
         if not info_video:
             return gr.update(), gr.update(), gr.update(), gr.update()
+
+        clear_video = gr.update(value=None, visible=True, autoplay=False)
+        reset_gallery = gr.update(selected_index=0)
+
         yield (
             gr.update(selected=self.TAB_VIDEO),
-            gr.update(value=None, visible=True, autoplay=False),
-            gr.update(value=None, visible=True, autoplay=False),
-            gr.update(selected_index=0),
+            clear_video,
+            clear_video,
+            reset_gallery,
         )
         yield (
             gr.update(selected=self.TAB_COLLECTION),
             gr.update(),
-            gr.update(value=None, visible=True, autoplay=False),
-            gr.update(selected_index=0),
+            gr.update(),
+            reset_gallery,
         )
 
     def gen_progress_plot(self, n_total: int, n_done: int):
