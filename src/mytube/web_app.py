@@ -1,6 +1,7 @@
 # %%
 
 import datetime
+import base64
 import glob
 import json
 import os
@@ -38,12 +39,26 @@ class WebApp:
         self.video_files = sorted(glob.glob(f"{self.processed_videos_folder}/*.mp4"))
         self.thumbnail_folder = os.path.join(self.processed_videos_folder, "thumbnails")
         self.thumbnails = self._get_thumbnails()
+        self.empty_thumbnail = self._ensure_empty_thumbnail()
+        self.collection_thumbnails = [self.empty_thumbnail, *self.thumbnails]
         self.color_done = color_done
         self.color_undone = color_undone
         self.state_file = os.path.abspath("webapp_state.json")
         print(f"WebApp state file: {self.state_file}")
         self._write_state(self._default_state())
         self.state = self._load_state()
+
+    def _ensure_empty_thumbnail(self):
+        os.makedirs(self.thumbnail_folder, exist_ok=True)
+        empty_path = os.path.join(self.thumbnail_folder, "__empty__.png")
+        if not os.path.exists(empty_path):
+            white_pixel_png = (
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8"
+                "/x8AAwMCAO5Vn9sAAAAASUVORK5CYII="
+            )
+            with open(empty_path, "wb") as f:
+                f.write(base64.b64decode(white_pixel_png))
+        return empty_path
 
     def _get_thumbnails(self):
         thumbnails = []
@@ -203,17 +218,34 @@ class WebApp:
                 idx = int(raw_index)
             except ValueError:
                 idx = None
+        elif isinstance(raw_index, tuple) and raw_index:
+            first_value = raw_index[0]
+            if isinstance(first_value, int):
+                idx = first_value
 
-        if idx is None or not (0 <= idx < len(self.video_files)):
+        if idx is None or not (0 <= idx < len(self.collection_thumbnails)):
             progress_plot = self.gen_progress_plot(current_limit, counter)
             yield counter, gr.update(), gr.update(), seen_videos, progress_plot
             return
 
+        if idx == 0:
+            progress_plot = self.gen_progress_plot(current_limit, counter)
+            yield (
+                counter,
+                gr.update(),
+                gr.update(),
+                seen_videos,
+                progress_plot,
+            )
+            return
+
+        video_idx = idx - 1
+
         if counter < current_limit:
             counter += 1
-            seen_videos.append(idx)
+            seen_videos.append(video_idx)
             video_update = gr.update(
-                value=self.video_files[idx], visible=True, autoplay=True
+                value=self.video_files[video_idx], visible=True, autoplay=True
             )
             tabs_update = gr.update(selected=self.TAB_VIDEO)
         else:
@@ -255,12 +287,13 @@ class WebApp:
 
         # Always clear the player first so re-playing the same info video works after undo.
         video_clear = gr.update(value=None, visible=True, autoplay=False)
-
         if current_counter < current_limit - 1:
             tab_update = gr.update(selected=self.TAB_COLLECTION)
             info_steps = [gr.update(value=None, visible=True, autoplay=False)]
+            gallery_reset = gr.update(selected_index=0)
         elif current_counter == current_limit - 1:
             tab_update = gr.update(selected=self.TAB_INFO)
+            gallery_reset = gr.update()
             if os.path.exists(self.only_one_more_path):
                 info_steps = [
                     gr.update(value=None, visible=True, autoplay=False),
@@ -275,6 +308,7 @@ class WebApp:
                 info_steps = [gr.update(value=None, visible=True, autoplay=False)]
         else:
             tab_update = gr.update(selected=self.TAB_INFO)
+            gallery_reset = gr.update()
             if os.path.exists(self.finished_path):
                 info_steps = [
                     gr.update(value=None, visible=True, autoplay=False),
@@ -289,16 +323,27 @@ class WebApp:
                 info_steps = [gr.update(value=None, visible=True, autoplay=False)]
 
         # Step 1: clear info video to force reload even if the same file is played again.
-        yield video_clear, tab_update, info_steps[0]
+        yield video_clear, tab_update, info_steps[0], gallery_reset
 
         # Step 2: play the requested info video when available.
         if len(info_steps) > 1:
-            yield video_clear, tab_update, info_steps[1]
+            yield video_clear, tab_update, info_steps[1], gallery_reset
 
     def end_info_video(self, info_video: str | None):
         if not info_video:
-            return gr.update()
-        return gr.update(selected=self.TAB_COLLECTION)
+            return gr.update(), gr.update(), gr.update(), gr.update()
+        yield (
+            gr.update(selected=self.TAB_VIDEO),
+            gr.update(value=None, visible=True, autoplay=False),
+            gr.update(value=None, visible=True, autoplay=False),
+            gr.update(selected_index=0),
+        )
+        yield (
+            gr.update(selected=self.TAB_COLLECTION),
+            gr.update(),
+            gr.update(value=None, visible=True, autoplay=False),
+            gr.update(selected_index=0),
+        )
 
     def gen_progress_plot(self, n_total: int, n_done: int):
         # Define colors for "done" and "undone" sections
@@ -385,7 +430,7 @@ class WebApp:
                     with gr.Tabs() as tabs:
                         with gr.Tab(label="Collection", id=self.TAB_COLLECTION):
                             thumbnail_gallery = gr.Gallery(
-                                self.thumbnails,
+                                self.collection_thumbnails,
                                 label="Thumbnails",
                                 allow_preview=False,
                                 columns=5,
@@ -463,13 +508,13 @@ class WebApp:
             video.end(
                 fn=self.end_video,
                 inputs=[video, st_counter, st_n_max_videos],
-                outputs=[video, tabs, info_video],
+                outputs=[video, tabs, info_video, thumbnail_gallery],
             )
 
             info_video.end(
                 fn=self.end_info_video,
                 inputs=[info_video],
-                outputs=[tabs],
+                outputs=[tabs, video, info_video, thumbnail_gallery],
             )
 
             thumbnail_gallery.select(
