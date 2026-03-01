@@ -4,6 +4,7 @@ import datetime
 import glob
 import json
 import os
+import importlib.metadata
 
 import gradio as gr
 import matplotlib.pyplot as plt
@@ -408,6 +409,9 @@ class WebApp:
             self.color_undone,
         )
 
+        ## Get version from package metadata from .toml file
+        version = importlib.metadata.version("mytube")
+
         with gr.Blocks() as demo:
             # State
             st_counter = gr.State(value=self.state.get("counter", 0))
@@ -417,6 +421,7 @@ class WebApp:
             # Layout
             gr.Markdown(f"## {self.title}")
             if self.information:
+                gr.Markdown(f"Version: {version}")
                 gr.Markdown(self.information)
             with gr.Row():
                 with gr.Column(scale=4):
